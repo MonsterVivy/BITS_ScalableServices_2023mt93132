@@ -1,0 +1,71 @@
+version: '3.8'
+services:
+
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq
+    networks:
+      - mynetwork
+    ports:
+      - "5672:5672" # Default port for AMQP
+      - "15672:15672" # Management console
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      
+  mysql:
+    image: mysql:5.7
+    container_name: mysql
+    networks:
+      - mynetwork
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mydb
+
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - API_GATEWAY_URL=${API_GATEWAY_URL}
+        - API_GATEWAY_PORT=${API_GATEWAY_PORT}
+    ports:
+      - 80:80
+    env_file:
+      - .env
+
+  notifications-service:
+    build: ./notifications-service
+    env_file:
+      - .env
+
+  movie-service:
+    build: ./movie-service
+    env_file:
+      - .env
+    depends_on:
+      - mysql
+    restart: always
+    networks:
+      - mynetwork
+
+
+  api-service:
+    build: ./api-service
+    container_name: api-gateway
+    ports:
+      - ${API_GATEWAY_PORT}:${API_GATEWAY_PORT}
+    env_file:
+      - .env
+    networks:
+      - mynetwork
+
+
+
+
+
+networks:
+  mynetwork:
+    driver: bridge
